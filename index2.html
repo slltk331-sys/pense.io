@@ -64,12 +64,9 @@ tfoot td{
   margin-top:8px;
 }
 </style>
-<link rel="stylesheet" href="mobile.css">
-<!-- CLOUD_STATE --><script src="cloud-sync.js"></script>
-<script src="formulas.js"></script>
 </head>
 
-<body><form action="/logout" method="post" style="text-align:right;margin-bottom:12px"><button type="submit" style="background:#0b6b4a;color:white;border:0;border-radius:8px;padding:10px 16px">ອອກຈາກລະບົບ</button></form>
+<body>
 
 <button id="goHome">🏠 ກັບໄປ Home</button>
 
@@ -107,8 +104,6 @@ tfoot td{
 /* ---------- helpers ---------- */
 function tableKey(table){ return 'expense_' + table.dataset.id; }
 function num(txt){
-  const formula = evaluateFormula(txt);
-  if(formula !== null) return formula;
   const n = parseInt(String(txt).replace(/,/g,''),10);
   return isNaN(n)?0:n;
 }
@@ -118,22 +113,19 @@ function fmt(n){ return Number(n||0).toLocaleString(); }
 function addRow(tbody,index,data={}){
   const tr=document.createElement('tr');
   tr.innerHTML=`
-    <td data-label="ລຳດັບ">${index}</td>
-    <td contenteditable="true" class="date" data-label="ວັນທີ / ເວລາ">--/--/---- --:--</td>
-    <td contenteditable="true" class="remark" data-label="ໝາຍເຫດ"></td>
-    <td contenteditable="true" class="amount" inputmode="text" data-label="ຈຳນວນເງິນ">0</td>
-    <td><button class="deleteBtn" aria-label="ລຶບແຖວ">🗑️</button></td>
+    <td>${index}</td>
+    <td contenteditable="true" class="date">${data.date||'--/--/---- --:--'}</td>
+    <td contenteditable="true" class="remark">${data.remark||''}</td>
+    <td contenteditable="true" class="amount">${data.amount||'0'}</td>
+    <td><button class="deleteBtn">🗑️</button></td>
   `;
-  tr.querySelector('.date').textContent=data.date||'--/--/---- --:--';
-  tr.querySelector('.remark').textContent=data.remark||'';
-  tr.querySelector('.amount').textContent=data.amount||'0';
   tbody.appendChild(tr);
 }
 
 /* ---------- load ---------- */
 const table=document.querySelector('.expenseTable');
 const tbody=table.querySelector('tbody');
-const saved=JSON.parse(reportStore.getItem(tableKey(table)))||[];
+const saved=JSON.parse(localStorage.getItem(tableKey(table)))||[];
 
 if(saved.length){ saved.forEach((r,i)=>addRow(tbody,i+1,r)); }
 else{ addRow(tbody,1); }
@@ -158,8 +150,7 @@ document.body.addEventListener('click',e=>{
 /* ---------- INPUT (LOCK CURSOR) ---------- */
 document.body.addEventListener('input',e=>{
   if(e.target.classList.contains('amount')){
-    if(e.target.textContent.trim().startsWith('=')){ updateTotal(); return; }
-    const clean = e.target.textContent.replace(/[^\d.\-]/g,'');
+    const clean = e.target.textContent.replace(/[^\d]/g,'');
     if(e.target.textContent !== clean){ e.target.textContent = clean; }
 
     const range = document.createRange();
@@ -172,7 +163,6 @@ document.body.addEventListener('input',e=>{
     updateTotal(); saveTable();
   }
 
-  if(e.target.classList.contains('date')) saveTable();
   if(e.target.classList.contains('remark')){
     const d=new Date();
     e.target.closest('tr').querySelector('.date').textContent =
@@ -211,14 +201,14 @@ function saveTable(){
       amount:tr.querySelector('.amount').textContent
     });
   });
-  reportStore.setItem(tableKey(table),JSON.stringify(data));
+  localStorage.setItem(tableKey(table),JSON.stringify(data));
 }
 
 /* ---------- clear ---------- */
 document.getElementById('clearAll').onclick=()=>{
   if(confirm('ຢືນຢັນລ້າງຂໍ້ມູນ?')){
-    reportStore.removeItem(tableKey(table));
-    cloudFlush().then(()=>location.reload()).catch(()=>{});
+    localStorage.removeItem(tableKey(table));
+    location.reload();
   }
 };
 
@@ -254,8 +244,8 @@ document.getElementById('goHome').onclick=()=>{
       const val = totalEl.textContent.replace(/,/g,'').trim();
       if(!val) return;
   
-      // ບັນທຶກເຂົ້າ reportStore
-      reportStore.setItem('expense', val);
+      // ບັນທຶກເຂົ້າ localStorage
+      localStorage.setItem('expense', val);
     }
   
     // ຈັບການປ່ຽນແປງ Total
@@ -266,43 +256,5 @@ document.getElementById('goHome').onclick=()=>{
   })();
   </script>
   
-<!-- Code injected by live-server -->
-<script>
-	// <![CDATA[  <-- For SVG support
-	if ('WebSocket' in window) {
-		(function () {
-			function refreshCSS() {
-				var sheets = [].slice.call(document.getElementsByTagName("link"));
-				var head = document.getElementsByTagName("head")[0];
-				for (var i = 0; i < sheets.length; ++i) {
-					var elem = sheets[i];
-					var parent = elem.parentElement || head;
-					parent.removeChild(elem);
-					var rel = elem.rel;
-					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
-						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
-						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
-					}
-					parent.appendChild(elem);
-				}
-			}
-			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
-			var address = protocol + window.location.host + window.location.pathname + '/ws';
-			var socket = new WebSocket(address);
-			socket.onmessage = function (msg) {
-				if (msg.data == 'reload') window.location.reload();
-				else if (msg.data == 'refreshcss') refreshCSS();
-			};
-			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
-				console.log('Live reload enabled.');
-				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
-			}
-		})();
-	}
-	else {
-		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
-	}
-	// ]]>
-</script>
 </body>
 </html>
