@@ -1,0 +1,785 @@
+
+
+<html lang="lo"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ສະຫຼຸບລາຍຮັບ - ລາຍຈ່າຍ</title>
+  
+  <!-- libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@100..900&amp;display=swap" rel="stylesheet">
+  
+  <style>
+  :root{
+    background-image: url(BN.jpg); --card:#ffffff; --muted:#6b7280; --accent:#0b6b4a;
+  --accent-2:#1976d2; --good:#25D366; --danger:#f57f17;
+  --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans Lao", Inter, system-ui;background: var(--bg);color:#111827;padding:22px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  h1{margin:0;font-size:20px;color:var(--accent);font-weight:700}
+  #datetime{font-size:50px;color:var(--muted)}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 12px 30px rgba(7,22,34,0.06);overflow:hidden}    
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .group{background:linear-gradient(180deg,#9efbe5,#9cefff);border-radius:12px;padding:12px;border:1px solid rgba(11,107,74,0.06);box-shadow:0 6px 18px rgba(2,6,23,0.04)}
+  .title{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .dot{width:12px;height:12px;border-radius:50%}
+  .dot.credit{background:#02ff3d}
+  .dot.cash{background:#ff0000}
+  .dot.other{background:#4800ff}
+  .title h3{margin:0;font-size:15px;color:var(--accent)}
+  .title p{margin:0;font-size:12px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px 10px;border-bottom:1px dashed rgba(15,23,42,0.04);vertical-align:middle}
+  th{font-weight:700;color:#0f172a;text-align:left;font-size:13px}
+  td.label{color:var(--muted);font-size:13px}
+  .value{min-width:110px;text-align:right;font-weight:700;font-size:14px}
+  [contenteditable="true"]{background:rgba(255,255,255,0.8);padding:6px;border-radius:8px;outline:none}
+  .totalCard{margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border-radius:10px;background:linear-gradient(90deg, rgba(11,107,74,0.06), rgba(11,107,74,0.02));border:1px solid rgba(11,107,74,0.06)}
+  .totalCard .label{font-weight:800;color:var(--accent)}
+  .totalCard .amount{font-weight:900;font-size:20px}
+  .amount.accent{color:var(--accent-2)}
+  .btns{margin-top:14px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+  button.btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:700;font-size:13px;transition:transform .15s,box-shadow .15s}
+  button.ghost{background:transparent;color:var(--muted);border:1px solid rgba(2,6,23,0.06)}
+  button.blue{background:var(--accent-2);color:#fff}
+  button.green{background:var(--good);color:#fff}
+  button.warn{background:var(--danger);color:#fff}
+  button.btn:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(2,6,23,0.08)}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}.btns{justify-content:center}}
+  @media (max-width:600px){
+  .grid{grid-template-columns:1fr}
+  .totalCard{flex-direction:column;align-items:flex-start}
+  .btns{justify-content:center;flex-wrap:wrap}
+  [contenteditable="true"]{font-size:16px;padding:8px}
+  }
+  
+  /* --- modal styles (small, unobtrusive, matches design) --- */
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(2,6,23,0.45);
+    z-index:1200;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+  }
+  .modal {
+    width:100%;
+    max-width:420px;
+    background:var(--card);
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 18px 50px rgba(2,6,23,0.3);
+    transform:translateY(0);
+    animation:modalIn .22s ease;
+  }
+  .modal h3{margin:0 0 8px;color:var(--accent-2)}
+  .modal p{margin:0 0 14px;color:var(--muted)}
+  .modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+  .modal .modal-actions .btn{min-width:110px}
+  .modal .preview{white-space:pre-wrap;background:#f7f9fb;padding:10px;border-radius:8px;border:1px solid rgba(2,6,23,0.04);max-height:260px;overflow:auto;font-family:monospace;font-size:13px;color:#111}
+  /* small phone input */
+  .modal .phoneRow{display:flex;gap:8px;align-items:center}
+  .modal input[type="text"]{flex:1;padding:8px;border-radius:10px;border:1px solid rgba(2,6,23,0.06);outline:none}
+  
+  /* animations */
+  @keyframes modalIn {
+    from{opacity:0; transform:translateY(-10px)}
+    to{opacity:1; transform:translateY(0)}
+  }
+  </style>
+  </head>
+  <body>
+   
+    
+  <div class="wrap">
+
+  
+  <div class="card" id="reportCard">
+    <header>
+       <!-- ปุ่มกลับหน้า Home -->
+  <button id="ລາຍງານຄ່າໃຊ້ຈ່າຍ">🛒ລາຍງານຄ່າໃຊ້ຈ່າຍ</button>
+  <script>// ปุ่มกลับหน้า Home
+  document.getElementById('ລາຍງານຄ່າໃຊ້ຈ່າຍ').addEventListener('click', ()=>{
+    window.location.href = 'index2.html'; // เปลี่ยนเป็น URL หน้า Home ของคุณ
+  });
+  </script>
+  <style>
+    
+    /* Home button */
+    #ລາຍງານຄ່າໃຊ້ຈ່າຍ { margin-bottom:15px; padding:8px 16px; background:#0ee6a5; color:rgb(0, 0, 0); border:none; border-radius:6px; font-size:26px; }
+    #ລາຍງານຄ່າໃຊ້ຈ່າຍ:hover { background:#ff0000fa; }
+  
+  </style>
+      <h1>ຕາຕະລາງ</h1>
+      <div id="datetime">03 ພ.ຈ 2025 03:45:28</div>
+      </header>
+  <div class="grid">
+  <!-- CREDIT -->
+  <div class="group" aria-labelledby="g-credit">
+  <div class="title"><div class="dot credit"></div><div><h3 id="g-credit">CREDIT(IN)+CASH(ເປີດ)	</h3><p>ຍອດເປີດ-ເຄດິດເຂົ້າ</p></div></div>
+  <table>
+  <thead><tr><th>ລາຍການ</th><th>ຈໍານວນ</th></tr></thead>
+  <tbody>
+  <tr><td class="label">CASH IN(ເປີດ)</td><td class="value" id="cash_open" contenteditable="true">0</td></tr>
+  
+  
+  <tr><td class="label">CREDIT IN.<img src="logo4.png" alt="" width="20px"></td><td class="value" id="credit_in4" contenteditable="true">0</td></tr>
+  <tr><td class="label">CREDIT IN.<img src="logo5.png" alt="" width="20px"></td><td class="value" id="credit_in5" contenteditable="true">0</td></tr>
+  <tr><td class="label">ເຕີມ-ຖອນ(ເຄດິດ)</td><td class="value" id="credit_in6" contenteditable="true">0</td></tr>
+  <tr><td class="label">Total1</td><td class=" " id="total1">0</td></tr>
+  </tbody>
+  </table>
+  </div>
+  
+  <!-- CASH / BANK -->
+  <div class="group" aria-labelledby="g-cash">
+  <div class="title"><div class="dot cash"></div><div><h3 id="g-cash">ເງິນສົດ / ບັນຊີ</h3><p>ຍອດປິດ-ເຄດິດອອກ</p></div></div>
+  <table>
+
+  <thead><tr><th>ລາຍການ</th><th>ຈໍານວນ</th></tr></thead>
+  <tbody>
+  <tr><td class="label">CASH OUT(ປິດ)</td><td class="value" id="cash_close" contenteditable="true">0</td></tr>
+  
+  
+  <tr><td class="label">CREDIT OUT<img src="logo4.png" alt="" width="20px"></td><td class="value" id="credit_out3" contenteditable="true">0</td></tr>
+  <tr><td class="label">CREDIT OUT<img src="logo5.png" alt="" width="20px"></td><td class="value" id="credit_out4" contenteditable="true">0</td></tr>
+  <tr><td class="label">ເຕີມ-ຖອນ(ເງີນ)</td><td class="value" id="credit_out8" contenteditable="true">0</td></tr>
+  
+  </tbody>
+  </table>
+  </div>
+  
+  <!-- OTHER -->
+  <div class="group" style="grid-column:1 / -1" aria-labelledby="g-other">
+  <div class="title"><div class="dot other"></div><div><h3 id="g-other">ອື່ນໆ (Expenses)</h3><p>ເງີນ-ລາຍຈ່າຍຕ່າງໆ  </p></div></div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px">
+  
+  
+  <div><div style="font-size:12px;color:var(--muted)">promo(ໂປໂມຊັນ)</div><div id="promo(ໂປໂມຊັນ)" contenteditable="true" class="value">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)">expense(ລາຍຈ່າຍ)</div><div id="expense"  class="value">0</div></div>
+  
+  <div><div style="font-size:12px;color:var(--muted)"><img src="batbc.png" alt="" width="40px">ເງີນບັນຊີ (ບາດ)</div><div id="THB" contenteditable="true" class="value">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)">TIKET (ບິນ)</div><div id="TIKET(ບິນ)" contenteditable="true" class="value">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)" >ເງີນສົດ (ບາດ) </div><div id="ເງີນສົດ (ບາດ)" contenteditable="true" class="value">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)"></div><div id="cash4" class="value" style="background:#eee;">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)">ເງີນສົດ (ກີບ)</div><div id="kip" contenteditable="true" class="value">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)"> </div><div id="cash5" class="value" style="background:#eee;">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)"><img src="kipbc.png" alt="" width="40px">ເງີນບັນຊີ (ກີບ)</div><div id="kipBCEL" contenteditable="true" class="value">0</div></div>
+  <div><div style="font-size:12px;color:var(--muted)"> </div><div id="cash6" class="value" style="background:#eee;">0</div></div>
+  <!-- <div><div style="font-size:12px;color:var(--muted)"></div><div id="kip3" contenteditable="true" class="value">0</div></div> -->
+  </div>
+  <div class="totalCard">
+  <div><div class="label">TotalExpenses</div></div>
+  <div><div class="amount accent" id="totalExpenses">0</div></div>
+  </div>
+  </div>
+  </div>
+  
+  <!-- Grand total -->
+  <div class="totalCard" style="margin-top:16px">
+  <div><div class="label">Grand Total</div></div>
+  <div><div class="amount" id="grand_total">0</div></div>
+  </div>
+  
+  <!-- buttons -->
+  <div class="btns">
+  <button class="btn ghost" id="pasteData">📋 ວາງຂໍ້ມູນ</button>
+  <button class="btn ghost" id="copy">📑 Copy CSV</button>
+  <button class="btn blue" id="downloadImg">🖼️ Download PNG</button>
+  <button class="btn" id="downloadXlsx" style="background:#0b6b4a;color:#fff">📥 Download XLSX</button>
+  <button class="btn warn" id="reset">♻️ Reset</button>
+  <button class="btn green" id="sendWhatsApp">💬 Send WhatsApp</button>
+  </div>
+  </div>
+  <style>
+    .dg{
+        
+     background-color: #02ff3d;
+     color: #f9f9f9;
+    }
+  </style>
+  
+  <!-- Confirm Reset Modal -->
+  <div id="confirmModalOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <h3 id="confirmModalTitle">ຢືນຢັນການ Reset?</h3>
+      <p>ທ່ານແນ່ໃຈບໍວ່າຈະລ້າງຂໍ້ມູນທັງໝົດ? ການກົດຢືນຢັນຈະຄືນຄ່າເປັນ 0.</p>
+      <div class="modal-actions">
+        <button id="confirmYes" class="btn warn">ຢືນຢັນ</button>
+        <button id="confirmNo" class="btn ghost">ຍົກເລີກ</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- WhatsApp Preview Modal -->
+  <div id="whatsappModalOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="whatsappModalTitle">
+      <h3 id="whatsappModalTitle">Preview ຂໍ້ຄວາມ (WhatsApp)</h3>
+      <p>ກວດເບິ່ງຂໍ້ຄວາມກ່ອນສົ່ງ — ຕັ້ງເບີ WhatsApp ຈ່າຍບໍ່ຕ້ອງພາຍໃນ (+856...)</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+        <div class="phoneRow" style="flex:1">
+          <input id="waPhone" type="text" placeholder="85620xxxxxxxx">
+        </div>
+      </div>
+      <div class="preview" id="waPreview" aria-live="polite"></div>
+      <div class="modal-actions">
+        <button id="confirmSend" class="btn green">✅ ສົ່ງ</button>
+        <button id="cancelSend" class="btn ghost">❌ ຍົກເລີກ</button>
+      </div>
+    </div>
+  </div>
+  
+  
+  <script>
+  // --- datetime ---
+  (function datetimeLoop(){
+  const monthNames = ["ມ.ກ","ກ.ພ","ມ.ນ","ມ.ສ","ພ.ພ","ມິ","ກ.ລ","ສ.ຫ","ກ.ຍ","ຕ.ລ","ພ.ຈ","ທ.ນ"];
+  function upd(){
+    const d=new Date();
+    document.getElementById('datetime').textContent = `${String(d.getDate()).padStart(2,'0')} ${monthNames[d.getMonth()]} ${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  }
+  upd(); setInterval(upd,1000);
+  })();
+  
+  // --- Editable IDs ---
+  const editableIds = ["credit_in4","credit_in5",,"credit_in6","credit_out3","credit_out4","credit_out8","cash_open","cash_close","promo(ໂປໂມຊັນ)","expense","THB","TIKET(ບິນ)","ເງີນສົດ (ບາດ)","kip","kipBCEL",];
+  // helper: parse number from element (supports comma/space)
+  function parseCell(id){
+    const el=document.getElementById(id);
+    if(!el) return 0;
+    const txt = el.textContent || el.innerText || '';
+    // remove commas and spaces
+    const clean = txt.replace(/[, ]+/g,'').trim();
+    const n = parseFloat(clean);
+    return Number.isFinite(n) ? n : 0;
+  }
+  // format with comma
+  function fmt(n){ 
+    if(!Number.isFinite(n)) return '0';
+    return Number(n).toLocaleString();
+  }
+  
+  // --- Calculation ---
+  function calculateAll(){
+    const kipVal = parseCell('kip');
+    const kipBCELVal = parseCell('kipBCEL');
+    const kip3Val = parseCell('kip3');
+    const cash4Val = (kipVal/700) || 0;
+    const cash5Val = (kipBCELVal/700) || 0;
+    const cash6Val = (kip3Val/700) || 0;
+  
+    // show results with formatting
+    document.getElementById('cash4').textContent = fmt(Math.round(cash4Val));
+    document.getElementById('cash5').textContent = fmt(Math.round(cash5Val));
+    document.getElementById('cash6').textContent = fmt(Math.round(cash6Val));
+  
+    const total1 = parseCell('credit_in')-parseCell('credit_in2')-parseCell('credit_in3')-parseCell('credit_in4')-parseCell('credit_in5')-parseCell('credit_in6')
+                  + parseCell('credit_out')+parseCell('credit_out2')+parseCell('credit_out3')+parseCell('credit_out4')-parseCell('credit_out8');
+    document.getElementById('total1').textContent = fmt(total1);
+  
+    const totalExpenses = parseCell('cash') + parseCell('ticket') + parseCell('promo(ໂປໂມຊັນ)') 
+                          + parseCell('THB') + parseCell('TIKET (ບິນ)')+ parseCell('ເງີນສົດ (ບາດ)') + cash4Val + cash5Val + cash6Val
+                          + parseCell('expense') + parseCell('expenseOL') 
+    document.getElementById('totalExpenses').textContent = fmt(Math.round(totalExpenses));
+  
+    // Grand total: credit net + cash_open - cash_close + bank_close
+    const grand = parseCell('cash_close')-parseCell('cash_open')+parseCell('total1') ;
+    document.getElementById('grand_total').textContent = fmt(Math.round(grand));
+  }
+  
+  // --- auto calculate on edit ---
+  // Attach 'input' and 'blur' events to keep formatting friendly
+  editableIds.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', calculateAll);
+    el.addEventListener('blur', ()=>{
+      const v = parseCell(id);
+      el.textContent = fmt(Math.round(v));
+    });
+  });
+  calculateAll();
+  
+  // --- Buttons ---
+  // Paste from clipboard
+  document.getElementById('pasteData').addEventListener('click', async ()=>{
+    try{
+      const text = await navigator.clipboard.readText();
+      const rows = text.split('\n').map(r=>r.split('\t'));
+      rows.forEach(r=>{
+        const id = r[0]?.trim();
+        const val = r[1]?.trim();
+        if(id && document.getElementById(id)) document.getElementById(id).textContent = val;
+      });
+      calculateAll();
+    }catch(e){alert('ບໍ່ສາມາດວາງຂໍ້ມູນໄດ້');}
+  });
+  
+  // Copy CSV
+  document.getElementById('copy').addEventListener('click', ()=>{
+    const headers = ["ID","Value"];
+    const data = editableIds.map(id=>[id, parseCell(id)]);
+    const csv = [headers.join(','), ...data.map(r=>r.join(','))].join('\n');
+    navigator.clipboard.writeText(csv).then(()=>alert('Copied CSV!'));
+  });
+  
+  // Download PNG
+  document.getElementById('downloadImg').addEventListener('click', ()=>{
+    html2canvas(document.getElementById('reportCard')).then(canvas=>{
+      const link = document.createElement('a');
+      link.download = 'report.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  });
+  
+  // Download XLSX
+  document.getElementById('downloadXlsx').addEventListener('click', ()=>{
+    const wb = XLSX.utils.book_new();
+    const ws_data = [["ID","Value"], ...editableIds.map(id=>[id, parseCell(id)])];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Report');
+    XLSX.writeFile(wb, 'report.xlsx');
+  });
+  
+  // --- Reset modal logic ---
+  const confirmOverlay = document.getElementById('confirmModalOverlay');
+  const btnReset = document.getElementById('reset');
+  const btnYes = document.getElementById('confirmYes');
+  const btnNo = document.getElementById('confirmNo');
+  
+  btnReset.addEventListener('click', ()=> {
+    confirmOverlay.style.display = 'flex';
+    confirmOverlay.setAttribute('aria-hidden','false');
+  });
+  
+  // confirm reset
+  btnYes.addEventListener('click', ()=>{
+    // optional: keep a short snapshot if you want undo (not implemented here)
+    editableIds.forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.textContent = '0';
+    });
+    calculateAll();
+    confirmOverlay.style.display = 'none';
+    confirmOverlay.setAttribute('aria-hidden','true');
+    alert("ລ້າງຂໍ້ມູນສຳເລັດ!");
+  });
+  
+  // cancel reset
+  btnNo.addEventListener('click', ()=>{
+    confirmOverlay.style.display = 'none';
+    confirmOverlay.setAttribute('aria-hidden','true');
+  });
+  
+  // click outside modal to close (for accessibility)
+  confirmOverlay.addEventListener('click', (e)=>{
+    if(e.target === confirmOverlay){
+      confirmOverlay.style.display = 'none';
+      confirmOverlay.setAttribute('aria-hidden','true');
+    }
+  });
+  
+  // --- WhatsApp modal logic ---
+  const waOverlay = document.getElementById('whatsappModalOverlay');
+  const btnSend = document.getElementById('sendWhatsApp');
+  const btnCancelSend = document.getElementById('cancelSend');
+  const btnConfirmSend = document.getElementById('confirmSend');
+  const waPreview = document.getElementById('waPreview');
+  const waPhone = document.getElementById('waPhone');
+  
+  function getLabelForId(id){
+    const el = document.getElementById(id);
+    if(!el) return id;
+    const tr = el.closest('tr');
+    if(!tr) return id;
+    const labelCell = tr.querySelector('td.label');
+    return labelCell ? labelCell.innerText.trim() : id;
+  }
+  
+  function buildMessage(){
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    
+    let lines = [];
+    lines.push(`📊 ສະຫຼຸບລາຍຮັບ - ລາຍຈ່າຍ (${dateStr})`);
+    lines.push('');
+    editableIds.forEach(id=>{
+      const el = document.getElementById(id);
+      const label = getLabelForId(id);
+      const value = fmt(parseCell(id));
+      lines.push(`• ${label}: ${value}`);
+    });
+    lines.push('');
+    lines.push(`TotalExpenses: ${document.getElementById('totalExpenses').textContent} 	฿`);
+    lines.push(`Grand Total: ${document.getElementById('grand_total').textContent} 	฿`);
+    lines.push(`ສົ່ງອອກຈາກລະບົບ: ${document.getElementById('grand_total').textContent} `);
+    return lines.join('\n');
+  }
+  
+  
+  // open preview modal + render message preview
+  btnSend.addEventListener('click', ()=>{
+    waOverlay.style.display = 'flex';
+    waOverlay.setAttribute('aria-hidden','false');
+    waPhone.value = ''; // empty by default
+    waPreview.textContent = buildMessage();
+  });
+  
+  // cancel send
+  btnCancelSend.addEventListener('click', ()=>{
+    waOverlay.style.display = 'none';
+    waOverlay.setAttribute('aria-hidden','true');
+  });
+  
+  // click outside modal to close
+  waOverlay.addEventListener('click', (e)=>{
+    if(e.target === waOverlay){
+      waOverlay.style.display = 'none';
+      waOverlay.setAttribute('aria-hidden','true');
+    }
+  });
+  
+  // confirm send: open wa.me or wa link with text
+  btnConfirmSend.addEventListener('click', ()=>{
+    const phoneRaw = waPhone.value.trim();
+    const msg = buildMessage();
+    if(phoneRaw === ''){
+      // open generic WhatsApp web composer with text
+      const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+      waOverlay.style.display = 'none';
+      waOverlay.setAttribute('aria-hidden','true');
+      return;
+    }
+    // Normalize phone: remove non-digits
+    const phoneClean = phoneRaw.replace(/[^\d]/g,'');
+    if(!phoneClean){
+      alert('ໃສ່ເບີ WhatsApp ຼຍ່ອງຖືກ (ເຊັ່ນ 85620xxxxxxx)');
+      return;
+    }
+    const url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+    waOverlay.style.display = 'none';
+    waOverlay.setAttribute('aria-hidden','true');
+  });
+  
+  // update preview if user edits phone or manually wants refresh (optional)
+  waPhone.addEventListener('input', ()=> {
+    waPreview.textContent = buildMessage();
+  });
+  
+  // --- make sure initial formatting (show commas) ---
+  editableIds.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      const v = parseCell(id);
+      el.textContent = fmt(Math.round(v));
+    }
+  });
+  calculateAll();
+  // --- โหลดค่าจาก localStorage ตอนเปิดหน้า ---
+  editableIds.forEach(id => {
+    const saved = localStorage.getItem(id);
+    if(saved !== null && document.getElementById(id)) {
+      document.getElementById(id).textContent = saved;
+    }
+  });
+  
+  // --- บันทึกค่าลง localStorage ทุกครั้งที่แก้ไข ---
+  editableIds.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', ()=> {
+      const v = parseCell(id);
+      localStorage.setItem(id, fmt(Math.round(v)));
+      calculateAll();
+    });
+    el.addEventListener('blur', ()=>{
+      const v = parseCell(id);
+      el.textContent = fmt(Math.round(v));
+      localStorage.setItem(id, fmt(Math.round(v)));
+    });
+  });
+  
+  // --- Reset ก็ล้าง localStorage ด้วย ---
+  btnYes.addEventListener('click', ()=>{
+    editableIds.forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.textContent = '0';
+      localStorage.removeItem(id);
+    });
+    calculateAll();
+    confirmOverlay.style.display = 'none';
+    confirmOverlay.setAttribute('aria-hidden','true');
+    alert("ລ້າງຂໍ້ມູນສຳເລັດ!");
+  });
+  
+  </script>
+  <script>
+   // Move to next row on Enter
+  editableIds.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault(); // ป้องกันขึ้นบรรทัดใหม่
+        // หา index ของ element ปัจจุบัน
+        const idx = editableIds.indexOf(id);
+        if(idx >= 0 && idx < editableIds.length-1){
+          const nextEl = document.getElementById(editableIds[idx+1]);
+          if(nextEl){
+            nextEl.focus();
+            // ถ้ามี text ก็ select อัตโนมัติ
+            if(nextEl.select) nextEl.select();
+          }
+        }
+      }
+    });
+  });
+  function calculateAll(){
+    const kipVal = parseCell('kip');
+    const kipBCELVal = parseCell('kipBCEL');
+    const kip3Val = parseCell('kip3');
+    const cash4Val = (kipVal/700) || 0;
+    const cash5Val = (kipBCELVal/700) || 0;
+    const cash6Val = (kip3Val/700) || 0;
+  
+    // show results with formatting
+    const cash4El = document.getElementById('cash4');
+    const cash5El = document.getElementById('cash5');
+    const cash6El = document.getElementById('cash6');
+    cash4El.textContent = fmt(Math.round(cash4Val));
+    cash5El.textContent = fmt(Math.round(cash5Val));
+    cash6El.textContent = fmt(Math.round(cash6Val));
+    cash4El.style.color = cash4Val < 0 ? 'red' : '';
+    cash5El.style.color = cash5Val < 0 ? 'red' : '';
+    cash6El.style.color = cash6Val < 0 ? 'red' : '';
+  
+    const total1 = parseCell('credit_in')-parseCell('credit_in2')-parseCell('credit_in3')-parseCell('credit_in4')-parseCell('credit_in5')-parseCell('credit_in6')
+                  + parseCell('credit_out')+parseCell('credit_out2')+parseCell('credit_out3')+parseCell('credit_out4')-parseCell('credit_out8');
+    const total1El = document.getElementById('total1');
+    total1El.textContent = fmt(total1);
+    total1El.style.color = total1 < 0 ? 'red' : '';
+  
+    const totalExpenses = parseCell('cash') + parseCell('ticket') + parseCell('promo(ໂປໂມຊັນ)') 
+                          + parseCell('THB') + parseCell('TIKET(ບິນ)') + parseCell('ເງີນສົດ (ບາດ)') + cash4Val + cash5Val + cash6Val
+                          + parseCell('expense') + parseCell('expenseOL');
+    const totalExpensesEl = document.getElementById('totalExpenses');
+    totalExpensesEl.textContent = fmt(Math.round(totalExpenses));
+    totalExpensesEl.style.color = totalExpenses < 0 ? 'red' : '';
+  
+    // Grand total: credit net + cash_open - cash_close + bank_close
+    const grand = parseCell('cash_close')-parseCell('cash_open')+parseCell('total1') ;
+    const grandEl = document.getElementById('grand_total');
+    grandEl.textContent = fmt(Math.round(grand));
+    grandEl.style.color = grand < 0 ? 'red' : '';
+  }
+  
+  
+  
+  window.onload = function() {
+    document.getElementById("show").innerText = localStorage.getItem("expenseOL") || "ບໍ່ມີຂໍ້ມູນ";
+  };
+  </script>
+  
+  
+  
+  
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>โฆษณา</title>
+  <style>
+    .sticky-ad {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: 320px;
+      max-width: calc(100% - 36px);
+      z-index: 99999;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+      transition: transform .25s, opacity .25s;
+      transform-origin: 100% 100%;
+      font-family: sans-serif;
+    }
+    @media (max-width: 420px) {
+      .sticky-ad { right: 12px; left: 12px; bottom: 12px; width: auto; }
+    }
+    .sticky-ad img.ad-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+    }
+    .sticky-ad .ad-bar {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:8px 12px;
+      background: #f3f3f3;
+    }
+    .sticky-ad .ad-text {
+      font-size:14px;
+      color:#222;
+      flex:1;
+      margin-right:10px;
+    }
+    .value{
+        background-color: #ffffff;
+    }
+    .sticky-ad button.close-btn {
+      border:0;
+      background:#ff4d4d;
+      color:#fff;
+      width:28px;
+      height:28px;
+      cursor:pointer;
+      font-size:18px;
+      font-weight:bold;
+      border-radius:50%;
+      line-height:1;
+      transition: background .2s;
+    }
+    .sticky-ad button.close-btn:hover {
+      background:#cc0000;
+    }
+    .sticky-ad.show { transform: scale(1); opacity:1; }
+    .sticky-ad.hide { transform: scale(.9); opacity:0; pointer-events:none; }
+  </style>
+  
+  
+  
+  
+  
+  <script>
+  (function(){
+    const adEl   = document.getElementById('stickyAd');
+    const imgEl  = document.getElementById('adImg');
+    const closeBtn = document.getElementById('adCloseBtn');
+  
+    function showAd() {
+      adEl.classList.remove('hide');
+      requestAnimationFrame(()=> adEl.classList.add('show'));
+    }
+    function hideAd() {
+      adEl.classList.remove('show');
+      adEl.classList.add('hide');
+    }
+    closeBtn.addEventListener('click', hideAd);
+    document.addEventListener('keydown', e => { if(e.key==="Escape") hideAd(); });
+  
+    // ปรับขนาดภาพถ้าสูงเกินไป
+    imgEl.addEventListener('load', function(){
+      const maxH = Math.min(window.innerHeight * 0.6, 600);
+      if (imgEl.naturalHeight > maxH) {
+        imgEl.style.maxHeight = maxH + 'px';
+        imgEl.style.width = '100%';
+      }
+    });
+  
+    // แสดงโฆษณาหลังโหลดหน้า 0.3 วิ
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', ()=> setTimeout(showAd, 300));
+    } else setTimeout(showAd, 300);
+  })();
+  </script>
+  
+  <!-- Code injected by live-server -->
+  <script>
+    // <![CDATA[  <-- For SVG support
+    if ('WebSocket' in window) {
+      (function () {
+        function refreshCSS() {
+          var sheets = [].slice.call(document.getElementsByTagName("link"));
+          var head = document.getElementsByTagName("head")[0];
+          for (var i = 0; i < sheets.length; ++i) {
+            var elem = sheets[i];
+            var parent = elem.parentElement || head;
+            parent.removeChild(elem);
+            var rel = elem.rel;
+            if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+              var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+              elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+            }
+            parent.appendChild(elem);
+          }
+        }
+        var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+        var address = protocol + window.location.host + window.location.pathname + '/ws';
+        var socket = new WebSocket(address);
+        socket.onmessage = function (msg) {
+          if (msg.data == 'reload') window.location.reload();
+          else if (msg.data == 'refreshcss') refreshCSS();
+        };
+        if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+          console.log('Live reload enabled.');
+          sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+        }
+      })();
+    }
+    else {
+      console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+    }
+    // ]]>
+  </script>
+  <!-- Code injected by live-server -->
+  <script>
+    // <![CDATA[  <-- For SVG support
+    if ('WebSocket' in window) {
+      (function () {
+        function refreshCSS() {
+          var sheets = [].slice.call(document.getElementsByTagName("link"));
+          var head = document.getElementsByTagName("head")[0];
+          for (var i = 0; i < sheets.length; ++i) {
+            var elem = sheets[i];
+            var parent = elem.parentElement || head;
+            parent.removeChild(elem);
+            var rel = elem.rel;
+            if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+              var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+              elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+            }
+            parent.appendChild(elem);
+          }
+        }
+        var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+        var address = protocol + window.location.host + window.location.pathname + '/ws';
+        var socket = new WebSocket(address);
+        socket.onmessage = function (msg) {
+          if (msg.data == 'reload') window.location.reload();
+          else if (msg.data == 'refreshcss') refreshCSS();
+        };
+        if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+          console.log('Live reload enabled.');
+          sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+        }
+      })();
+    }
+    else {
+      console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+    }
+    // ]]>
+  </script>
+  
+  
+  
+  
+  </div></body></html>
+  
+  
+  
+
+  
+

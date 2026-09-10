@@ -1,0 +1,308 @@
+
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ລາຍຈ່າຍ (ONLINE)</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@100..900&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:"Noto Sans Lao", sans-serif;
+  background:#f5f6fa;
+  padding:20px;
+}
+h2{margin:10px 0}
+button{
+  cursor:pointer;
+  padding:8px 14px;
+  border:none;
+  border-radius:8px;
+  color:#fff;
+  font-size:15px;
+}
+button:hover{opacity:.9}
+
+#goHome{background:#00cec9;margin-bottom:10px}
+.addRowBtn{background:#00b894;margin-top:10px}
+.clearBtn{background:#d63031;margin-top:10px}
+.whatsappBtn{background:#25D366;margin-top:10px}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  background:#fff;
+  border-radius:12px;
+  overflow:hidden;
+}
+th,td{
+  border:1px solid #dcdde1;
+  padding:10px;
+  text-align:center;
+}
+th{
+  background:linear-gradient(90deg,#5ce4e7,#07a8ff);
+  color:#fff;
+}
+td[contenteditable="true"]{
+  background:#fff;
+  outline:none;
+}
+tfoot td{
+  background:#ecf0f1;
+  font-weight:bold;
+}
+.totalAmount{font-weight:900}
+#grandTotal{
+  font-size:22px;
+  font-weight:900;
+  margin-top:8px;
+}
+</style>
+<link rel="stylesheet" href="mobile.css">
+<!-- CLOUD_STATE --><script src="cloud-sync.js"></script>
+<script src="formulas.js"></script>
+</head>
+
+<body><form action="/logout" method="post" style="text-align:right;margin-bottom:12px"><button type="submit" style="background:#0b6b4a;color:white;border:0;border-radius:8px;padding:10px 16px">ອອກຈາກລະບົບ</button></form>
+
+<button id="goHome">🏠 ກັບໄປ Home</button>
+
+<h2>ລາຍຈ່າຍ (ອອນລາຍ ONLINE)</h2>
+
+<table class="expenseTable" data-id="online">
+  <thead>
+    <tr>
+      <th>ຈຳນວນ</th>
+      <th>ວັນທີ / ເວລາ</th>
+      <th>ໝາຍເຫດ</th>
+      <th>ຈຳນວນເງິນ</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+  <tfoot>
+    <tr>
+      <td colspan="3">Total</td>
+      <td class="totalAmount">0</td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+
+<button class="addRowBtn">➕ ເພີ່ມແຖວ</button>
+
+<h2>Grand Total</h2>
+<div id="grandTotal">0</div>
+
+<button class="whatsappBtn" id="sendWhatsApp">📤 ສົ່ງ WhatsApp</button>
+<button class="clearBtn" id="clearAll">🧹 ລ້າງຂໍ້ມູນ</button>
+
+<script>
+/* ---------- helpers ---------- */
+function tableKey(table){ return 'expense_' + table.dataset.id; }
+function num(txt){
+  const formula = evaluateFormula(txt);
+  if(formula !== null) return formula;
+  const n = parseInt(String(txt).replace(/,/g,''),10);
+  return isNaN(n)?0:n;
+}
+function fmt(n){ return Number(n||0).toLocaleString(); }
+
+/* ---------- add row ---------- */
+function addRow(tbody,index,data={}){
+  const tr=document.createElement('tr');
+  tr.innerHTML=`
+    <td data-label="ລຳດັບ">${index}</td>
+    <td contenteditable="true" class="date" data-label="ວັນທີ / ເວລາ">--/--/---- --:--</td>
+    <td contenteditable="true" class="remark" data-label="ໝາຍເຫດ"></td>
+    <td contenteditable="true" class="amount" inputmode="text" data-label="ຈຳນວນເງິນ">0</td>
+    <td><button class="deleteBtn" aria-label="ລຶບແຖວ">🗑️</button></td>
+  `;
+  tr.querySelector('.date').textContent=data.date||'--/--/---- --:--';
+  tr.querySelector('.remark').textContent=data.remark||'';
+  tr.querySelector('.amount').textContent=data.amount||'0';
+  tbody.appendChild(tr);
+}
+
+/* ---------- load ---------- */
+const table=document.querySelector('.expenseTable');
+const tbody=table.querySelector('tbody');
+const saved=JSON.parse(reportStore.getItem(tableKey(table)))||[];
+
+if(saved.length){ saved.forEach((r,i)=>addRow(tbody,i+1,r)); }
+else{ addRow(tbody,1); }
+
+updateTotal();
+
+/* ---------- add row ---------- */
+document.querySelector('.addRowBtn').onclick=()=>{
+  addRow(tbody,tbody.children.length+1);
+  updateTotal(); saveTable();
+};
+
+/* ---------- delete ---------- */
+document.body.addEventListener('click',e=>{
+  if(e.target.classList.contains('deleteBtn')){
+    e.target.closest('tr').remove();
+    [...tbody.children].forEach((r,i)=>r.children[0].textContent=i+1);
+    updateTotal(); saveTable();
+  }
+});
+
+/* ---------- INPUT (LOCK CURSOR) ---------- */
+document.body.addEventListener('input',e=>{
+  if(e.target.classList.contains('amount')){
+    if(e.target.textContent.trim().startsWith('=')){ updateTotal(); return; }
+    const clean = e.target.textContent.replace(/[^\d.\-]/g,'');
+    if(e.target.textContent !== clean){ e.target.textContent = clean; }
+
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(e.target);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    updateTotal(); saveTable();
+  }
+
+  if(e.target.classList.contains('date')) saveTable();
+  if(e.target.classList.contains('remark')){
+    const d=new Date();
+    e.target.closest('tr').querySelector('.date').textContent =
+      `${String(d.getDate()).padStart(2,'0')}/`+
+      `${String(d.getMonth()+1).padStart(2,'0')}/`+
+      `${d.getFullYear()} `+
+      `${String(d.getHours()).padStart(2,'0')}:`+
+      `${String(d.getMinutes()).padStart(2,'0')}`;
+    saveTable();
+  }
+});
+
+/* ---------- blur format ---------- */
+document.body.addEventListener('blur',e=>{
+  if(e.target.classList.contains('amount')){
+    e.target.textContent = fmt(num(e.target.textContent));
+    updateTotal(); saveTable();
+  }
+},true);
+
+/* ---------- totals ---------- */
+function updateTotal(){
+  let total=0;
+  table.querySelectorAll('.amount').forEach(a=> total+=num(a.textContent));
+  table.querySelector('.totalAmount').textContent=fmt(total);
+  document.getElementById('grandTotal').textContent=fmt(total);
+}
+
+/* ---------- save ---------- */
+function saveTable(){
+  const data=[];
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    data.push({
+      date:tr.querySelector('.date').textContent,
+      remark:tr.querySelector('.remark').textContent,
+      amount:tr.querySelector('.amount').textContent
+    });
+  });
+  reportStore.setItem(tableKey(table),JSON.stringify(data));
+}
+
+/* ---------- clear ---------- */
+document.getElementById('clearAll').onclick=()=>{
+  if(confirm('ຢືນຢັນລ້າງຂໍ້ມູນ?')){
+    reportStore.removeItem(tableKey(table));
+    cloudFlush().then(()=>location.reload()).catch(()=>{});
+  }
+};
+
+/* ---------- WhatsApp ---------- */
+document.getElementById('sendWhatsApp').onclick=()=>{
+  let msg = '📊 ລາຍຈ່າຍ (ONLINE)\n\n';
+  const now=new Date();
+  msg+=`🕒 ${now.toLocaleString()}\n\n`;
+
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    msg+=`• ${tr.querySelector('.date').textContent} | `
+        +`${tr.querySelector('.remark').textContent} | `
+        +`${tr.querySelector('.amount').textContent}\n`;
+  });
+
+  msg+=`\n💰 Total: ${table.querySelector('.totalAmount').textContent}`;
+  msg+=`\n💰 Grand Total: ${document.getElementById('grandTotal').textContent}`;
+
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+};
+
+/* ---------- home ---------- */
+document.getElementById('goHome').onclick=()=>{
+  window.location.href='index.html';
+};
+</script>
+<script>
+  (function syncOnlineTotalToExpense(){
+    const totalEl = document.querySelector('.totalAmount');
+    if(!totalEl) return;
+  
+    function pushToExpense(){
+      const val = totalEl.textContent.replace(/,/g,'').trim();
+      if(!val) return;
+  
+      // ບັນທຶກເຂົ້າ reportStore
+      reportStore.setItem('expense', val);
+    }
+  
+    // ຈັບການປ່ຽນແປງ Total
+    const observer = new MutationObserver(pushToExpense);
+    observer.observe(totalEl,{childList:true,subtree:true,characterData:true});
+  
+    pushToExpense(); // ຄັ້ງທຳອິດ
+  })();
+  </script>
+  
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+</html>
