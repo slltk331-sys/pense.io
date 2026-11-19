@@ -427,6 +427,7 @@
     const readBranchFinance=key=>financeAuthClient.from('finance_branch_state')
       .select('data').eq('branch_id',financeBranchId).eq('state_key',key).maybeSingle();
     let financeFieldVisibility={};
+    let savedCashCounts=null;
     function financeExchangeRate(){const rate=Number(financeFieldVisibility.exchangeRatesByBranch?.[financeBranchId]);return Number.isFinite(rate)&&rate>0?rate:700;}
     const financeVisibilityFields=[['credit_in1','CREDIT IN 1'],['credit_in2','CREDIT IN 2'],['credit_in3','CREDIT IN 3'],['credit_in4','CREDIT IN 4'],['credit_in5','CREDIT IN 5'],['credit_out1','CREDIT OUT 1'],['credit_out2','CREDIT OUT 2'],['credit_out3','CREDIT OUT 3'],['credit_out4','CREDIT OUT 4'],['credit_out5','CREDIT OUT 5'],['thb1','ບາດ 1'],['thb2','ບາດ 2'],['cash_kip','cash kip'],['kip','kip'],['cash_kip2','cash kip2'],['kip2','kip2'],['cash_kip3','cash kip3'],['kip3','kip3'],['cash_count','ເງິນສົດ'],['bill','ບິນ']];
 
@@ -461,12 +462,14 @@
         const el=document.getElementById(id);
         values[id]=el ? (el.textContent || '0') : '0';
       });
+      values.cash_counts=savedCashCounts;
       values.exchange_rate=financeExchangeRate();
       return values;
     }
 
     function applyFinanceSnapshot(values){
       if(!values || typeof values!=='object') return;
+      savedCashCounts=values.cash_counts&&typeof values.cash_counts==='object'?{...values.cash_counts}:null;
       editableIds.forEach(id=>{
         const el=document.getElementById(id);
         if(el && values[id]!==undefined && document.activeElement!==el){
@@ -509,7 +512,7 @@
         }
       }
       financeCloudReady=true;
-      if(firstLoad) applyFinanceSnapshot(Object.fromEntries(editableIds.map(id=>[id,remoteValues?.[id]??'0'])));
+      if(firstLoad) applyFinanceSnapshot({...Object.fromEntries(editableIds.map(id=>[id,remoteValues?.[id]??'0'])),cash_counts:remoteValues?.cash_counts||null});
       await Promise.all([loadOnlineExpenseCloud(),syncPromoGrandTotal()]);
       await Promise.all([loadDailyStaff(),loadDailyHistory()]);
     }
@@ -797,7 +800,7 @@
     calculateAll();
     // --- โหลดค่าจาก localStorage ตอนเปิดหน้า ---
     editableIds.forEach(id => {
-      const saved = localStorage.getItem(id);
+      const saved = id==='cash_count'?null:localStorage.getItem(id);
       if(saved !== null && document.getElementById(id)) {
         document.getElementById(id).textContent = saved;
       }
@@ -845,14 +848,24 @@
 
     const cashCountConfig={thb:[1000,500,100,50,20],kip:[100000,50000,20000,10000,5000,2000,1000,500]};
     function cashRows(currency){return cashCountConfig[currency].map(note=>`<tr><td>${note.toLocaleString()}</td><td><input type="text" inputmode="numeric" autocomplete="off" data-cash-note="${currency}-${note}" value="0"></td><td class="readonly" data-cash-subtotal="${currency}-${note}">0</td></tr>`).join('');}
-    function initCashCounter(){document.getElementById('cashThbRows').innerHTML=cashRows('thb');document.getElementById('cashKipRows').innerHTML=cashRows('kip');document.querySelectorAll('[data-cash-note]').forEach(input=>{input.addEventListener('focus',()=>input.select());input.addEventListener('input',updateCashCounter);});}
+    function initCashCounter(){document.getElementById('cashThbRows').innerHTML=cashRows('thb');document.getElementById('cashKipRows').innerHTML=cashRows('kip');document.querySelectorAll('[data-cash-note]').forEach(input=>{input.addEventListener('focus',()=>input.select());input.addEventListener('input',()=>{document.getElementById('saveCashCount').disabled=false;document.getElementById('cashCountNotice').textContent='';updateCashCounter();});});}
     function updateCashCounter(){let thb=0,kip=0;document.querySelectorAll('[data-cash-note]').forEach(input=>{const [currency,noteText]=input.dataset.cashNote.split('-'),note=Number(noteText),pcs=Number(String(input.value).replace(/[^0-9-]/g,''))||0,sub=note*pcs;document.querySelector(`[data-cash-subtotal="${input.dataset.cashNote}"]`).textContent=sub.toLocaleString();if(currency==='thb')thb+=sub;else kip+=sub;});const total=thb+Math.round(kip/financeExchangeRate());document.getElementById('cashCountTotal').textContent=total.toLocaleString();return total;}
-    function openCashCounter(){const current=parseCell('cash_count');if(!document.getElementById('cashThbRows').children.length)initCashCounter();document.getElementById('cashCountOverlay').style.display='flex';document.getElementById('cashCountOverlay').setAttribute('aria-hidden','false');if(current===0)updateCashCounter();}
+    function openCashCounter(){
+      const current=parseCell('cash_count');
+      if(!document.getElementById('cashThbRows').children.length)initCashCounter();
+      let notice=document.getElementById('cashCountNotice');if(!notice){notice=document.createElement('p');notice.id='cashCountNotice';notice.style.cssText='padding:10px;border-radius:8px;background:#fff4cf;color:#704b00';document.getElementById('cashCountTitle').insertAdjacentElement('afterend',notice);}
+      document.querySelectorAll('[data-cash-note]').forEach(input=>{input.value=String(savedCashCounts?.[input.dataset.cashNote]||0);});
+      const computed=updateCashCounter();
+      const missing=!savedCashCounts&&current!==0;
+      notice.textContent=missing?'ຍອດທີ່ບັນທຶກໄວ້: '+fmt(current)+' — ບໍ່ມີລາຍລະອຽດໃບເງິນເກົ່າ. ກະລຸນານັບ ແລະປ້ອນໃໝ່ກ່ອນບັນທຶກ.':computed!==current?'ຍອດນັບຄຳນວນຕາມເຫຼດປັດຈຸບັນ; ກົດບັນທຶກເພື່ອຢືນຢັນ.':'';
+      document.getElementById('saveCashCount').disabled=missing;
+      document.getElementById('cashCountOverlay').style.display='flex';document.getElementById('cashCountOverlay').setAttribute('aria-hidden','false');
+    }
     function closeCashCounter(){const o=document.getElementById('cashCountOverlay');o.style.display='none';o.setAttribute('aria-hidden','true');}
     document.getElementById('cash_count').addEventListener('click',openCashCounter);
     document.getElementById('closeCashCount').addEventListener('click',closeCashCounter);
     document.getElementById('cashCountOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCashCounter();});
-    document.getElementById('saveCashCount').addEventListener('click',()=>{document.getElementById('cash_count').textContent=fmt(Math.round(updateCashCounter()));localStorage.setItem('cash_count',document.getElementById('cash_count').textContent);calculateAll();scheduleFinanceCloudSave();closeCashCounter();});
+    document.getElementById('saveCashCount').addEventListener('click',()=>{savedCashCounts=Object.fromEntries(Array.from(document.querySelectorAll('[data-cash-note]'),input=>[input.dataset.cashNote,Math.max(0,Math.trunc(Number(input.value)||0))]));document.getElementById('cash_count').textContent=fmt(Math.round(updateCashCounter()));localStorage.setItem('cash_count',document.getElementById('cash_count').textContent);calculateAll();scheduleFinanceCloudSave();closeCashCounter();});
     const billEl=document.getElementById('bill');
     function calculateBill(){const raw=(billEl.textContent||'').trim().replace(/^=/,'');if(!raw)return;if(!/^[0-9+*/().\s-]+$/.test(raw)){alert('ບິນໃຊ້ໄດ້ສະເພາະ ຕົວເລກ ແລະ + - × ÷');return;}try{const answer=Function(`"use strict";return (${raw})`)();if(!Number.isFinite(answer))throw new Error();billEl.textContent=fmt(Math.round(answer));calculateAll();scheduleFinanceCloudSave();}catch{alert('ຮູບແບບບິນບໍ່ຖືກຕ້ອງ');}}
     billEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();calculateBill();}});
